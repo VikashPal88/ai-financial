@@ -2,6 +2,7 @@ import { inngest } from "./client";
 import { db } from "@/lib/prisma";
 import EmailTemplate from "@/emails/template";
 import { sendEmail } from "@/actions/send-email";
+import { sendTemplatedEmail } from "@/actions/nodemailer";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 // 1. Recurring Transaction Processing with Throttling
@@ -136,11 +137,11 @@ async function generateFinancialInsights(stats, month) {
     Keep it friendly and conversational.
 
     Financial Data for ${month}:
-    - Total Income: $${stats.totalIncome}
-    - Total Expenses: $${stats.totalExpenses}
-    - Net Income: $${stats.totalIncome - stats.totalExpenses}
+    - Total Income: ₹${stats.totalIncome}
+    - Total Expenses: ₹${stats.totalExpenses}
+    - Net Income: ₹${stats.totalIncome - stats.totalExpenses}
     - Expense Categories: ${Object.entries(stats.byCategory)
-      .map(([category, amount]) => `${category}: $${amount}`)
+      .map(([category, amount]) => `${category}: ${amount}`)
       .join(", ")}
 
     Format the response as a JSON array of strings, like this:
@@ -190,7 +191,20 @@ export const generateMonthlyReports = inngest.createFunction(
         // Generate AI insights
         const insights = await generateFinancialInsights(stats, monthName);
 
-        await sendEmail({
+        // await sendEmail({
+        //   to: user.email,
+        //   subject: `Your Monthly Financial Report - ${monthName}`,
+        //   react: EmailTemplate({
+        //     userName: user.name,
+        //     type: "monthly-report",
+        //     data: {
+        //       stats,
+        //       month: monthName,
+        //       insights,
+        //     },
+        //   }),
+        // });
+        await sendTemplatedEmail({
           to: user.email,
           subject: `Your Monthly Financial Report - ${monthName}`,
           react: EmailTemplate({
@@ -264,7 +278,21 @@ export const checkBudgetAlerts = inngest.createFunction(
           (!budget.lastAlertSent ||
             isNewMonth(new Date(budget.lastAlertSent), new Date()))
         ) {
-          await sendEmail({
+          // await sendEmail({
+          //   to: budget.user.email,
+          //   subject: `Budget Alert for ${defaultAccount.name}`,
+          //   react: EmailTemplate({
+          //     userName: budget.user.name,
+          //     type: "budget-alert",
+          //     data: {
+          //       percentageUsed,
+          //       budgetAmount: parseInt(budgetAmount).toFixed(1),
+          //       totalExpenses: parseInt(totalExpenses).toFixed(1),
+          //       accountName: defaultAccount.name,
+          //     },
+          //   }),
+          // });
+          await sendTemplatedEmail({
             to: budget.user.email,
             subject: `Budget Alert for ${defaultAccount.name}`,
             react: EmailTemplate({

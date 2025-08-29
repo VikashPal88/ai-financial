@@ -3,8 +3,14 @@
 @tailwind utilities;
 
 body {
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: "Gilroy", sans-serif;
 }
+
+
+
+/* body {
+  font-family: Arial, Helvetica, sans-serif;
+} */
 
 html {
   scroll-behavior: smooth;
@@ -46,6 +52,7 @@ html {
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
+
   .dark {
     --background: 0 0% 3.9%;
     --foreground: 0 0% 98%;
@@ -86,6 +93,7 @@ html {
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
   }
@@ -95,6 +103,7 @@ html {
   .gradient {
     @apply bg-gradient-to-br from-blue-600 to-purple-600;
   }
+
   .gradient-title {
     @apply gradient font-extrabold tracking-tighter pr-2 pb-2 text-transparent bg-clip-text;
   }
@@ -119,9 +128,11 @@ html {
   0% {
     background-position: 0% 50%;
   }
+
   50% {
     background-position: 100% 50%;
   }
+
   100% {
     background-position: 0% 50%;
   }

@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { CalendarIcon, Loader2 } from "lucide-react";
+import { CalendarIcon, Loader2, Mic } from "lucide-react";
 import { format } from "date-fns";
 import { useRouter, useSearchParams } from "next/navigation";
 import useFetch from "@/hooks/use-fetch";
@@ -30,6 +30,8 @@ import { cn } from "@/lib/utils";
 import { createTransaction, updateTransaction } from "@/actions/transaction";
 import { transactionSchema } from "@/app/lib/schema";
 import { ReceiptScanner } from "./recipt-scanner";
+import VoiceExpenseModal from "@/components/VoiceModal";
+import { ParsedExpense } from "@/components/VoiceModal"; // Adjust path if needed to import ParsedExpense
 
 export function AddTransactionForm({
   accounts,
@@ -40,6 +42,7 @@ export function AddTransactionForm({
   const router = useRouter();
   const searchParams = useSearchParams();
   const editId = searchParams.get("edit");
+  const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
 
   const {
     register,
@@ -96,16 +99,57 @@ export function AddTransactionForm({
 
   const handleScanComplete = (scannedData) => {
     if (scannedData) {
-      setValue("amount", scannedData.amount.toString());
-      setValue("date", new Date(scannedData.date));
+      setValue("amount", scannedData.amount.toString(), {
+        shouldValidate: true,
+        shouldDirty: true,
+      });
+      setValue("date", new Date(scannedData.date), {
+        shouldValidate: true,
+        shouldDirty: true,
+      });
       if (scannedData.description) {
-        setValue("description", scannedData.description);
+        setValue("description", scannedData.description, {
+          shouldValidate: true,
+          shouldDirty: true,
+        });
       }
       if (scannedData.category) {
-        setValue("category", scannedData.category);
+        setValue("category", scannedData.category, {
+          shouldValidate: true,
+          shouldDirty: true,
+        });
       }
       toast.success("Receipt scanned successfully");
     }
+  };
+
+  const handleSaveExpense = async (exp: ParsedExpense) => {
+    const categoryObj = categories.find(
+      (c) => c.name === exp.category && c.type === "EXPENSE"
+    );
+    if (!categoryObj) {
+      toast.error("Category not found. Please select a valid category.");
+      return;
+    }
+
+    const defaultAccountId = accounts.find((ac) => ac.isDefault)?.id;
+    if (!defaultAccountId) {
+      toast.error("No default account found.");
+      return;
+    }
+
+    const formData = {
+      type: "EXPENSE",
+      amount: exp.amount,
+      description: exp.note + (exp.raw ? ` (from voice: ${exp.raw})` : ""),
+      accountId: defaultAccountId,
+      category: categoryObj.id,
+      date: exp.occurredAt,
+      isRecurring: false,
+    };
+
+    await transactionFn(formData);
+    setIsVoiceModalOpen(false);
   };
 
   useEffect(() => {
@@ -128,10 +172,28 @@ export function AddTransactionForm({
     (category) => category.type === type
   );
 
+  const closeVoiceModal = () => {
+    setIsVoiceModalOpen(false);
+  };
+
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       {/* Receipt Scanner - Only show in create mode */}
       {!editMode && <ReceiptScanner onScanComplete={handleScanComplete} />}
+      <VoiceExpenseModal
+        isOpen={isVoiceModalOpen}
+        onClose={closeVoiceModal}
+        onSaveExpense={handleSaveExpense}
+        defaultLanguage="en-IN" // or "hi-IN"
+      />
+
+      <button
+        onClick={() => setIsVoiceModalOpen(true)}
+        className="flex items-center justify-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold py-3 px-6 rounded-full transition-all duration-300 transform hover:scale-105 hover:shadow-lg shadow-md w-full text-center"
+      >
+        <Mic size={20} />
+        <span className="text-center">Voice Input</span>
+      </button>
 
       {/* Type */}
       <div className="space-y-2">
