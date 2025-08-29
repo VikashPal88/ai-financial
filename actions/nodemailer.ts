@@ -1,13 +1,22 @@
 import nodemailer from "nodemailer";
 
-export async function sendEmail(
-  subject: string,
-  templateName: string,
-  data: Record<string, string>
-) {
+interface EmailOptions {
+  to: string;
+  subject: string;
+  react?: string; // rendered React email as HTML string
+  text?: string;  // optional plain text fallback
+}
+
+export async function sendTemplatedEmail({
+  to,
+  subject,
+  react,
+  text,
+}: EmailOptions) {
   const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
     port: Number(process.env.SMTP_PORT) || 587,
+    secure: false,
     auth: {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS,
@@ -16,8 +25,9 @@ export async function sendEmail(
 
   await transporter.sendMail({
     from: process.env.SMTP_FROM,
-    to: process.env.SMTP_TO,
+    to,
     subject,
-    text: `Template: ${templateName}, Data: ${JSON.stringify(data)}`,
+    html: react || `<p>${text || "No content provided"}</p>`,
+    text,
   });
 }
