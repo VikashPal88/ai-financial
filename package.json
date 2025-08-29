@@ -8,8 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "email": "email dev",
-    "postinstall": "prisma generate",
-     "vercel-build": "npm install --legacy-peer-deps && next build"
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@arcjet/next": "^1.0.0-alpha.34",
@@ -60,9 +59,9 @@
     "next": "15.0.3",
     "next-themes": "^0.4.6",
     "nodemailer": "^7.0.5",
-    "react": "^19.0.0-rc-66855b96-20241106",
+    "react": "^18.2.0",
     "react-day-picker": "^9.9.0",
-    "react-dom": "^19.0.0-rc-66855b96-20241106",
+    "react-dom": "^18.2.0",
     "react-hook-form": "^7.62.0",
     "react-icons": "^5.5.0",
     "react-resizable-panels": "^3.0.4",
