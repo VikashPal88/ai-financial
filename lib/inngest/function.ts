@@ -2,7 +2,7 @@ import { inngest } from "./client";
 import { db } from "@/lib/prisma";
 import EmailTemplate from "@/emails/template";
 import { sendEmail } from "@/actions/send-email";
-import { sendTemplatedEmail } from "@/actions/nodemailer";
+// import { sendTemplatedEmail } from "@/actions/nodemailer";
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
@@ -192,20 +192,7 @@ export const generateMonthlyReports = inngest.createFunction(
         // Generate AI insights
         const insights = await generateFinancialInsights(stats, monthName);
 
-        // await sendEmail({
-        //   to: user.email,
-        //   subject: `Your Monthly Financial Report - ${monthName}`,
-        //   react: EmailTemplate({
-        //     userName: user.name,
-        //     type: "monthly-report",
-        //     data: {
-        //       stats,
-        //       month: monthName,
-        //       insights,
-        //     },
-        //   }),
-        // });
-        await sendTemplatedEmail({
+        await sendEmail({
           to: user.email,
           subject: `Your Monthly Financial Report - ${monthName}`,
           react: EmailTemplate({
@@ -218,6 +205,19 @@ export const generateMonthlyReports = inngest.createFunction(
             },
           }),
         });
+        // await sendTemplatedEmail({
+        //   to: user.email,
+        //   subject: `Your Monthly Financial Report - ${monthName}`,
+        //   react: EmailTemplate({
+        //     userName: user.name,
+        //     type: "monthly-report",
+        //     data: {
+        //       stats,
+        //       month: monthName,
+        //       insights,
+        //     },
+        //   }),
+        // });
       });
     }
 
@@ -279,21 +279,7 @@ export const checkBudgetAlerts = inngest.createFunction(
           (!budget.lastAlertSent ||
             isNewMonth(new Date(budget.lastAlertSent), new Date()))
         ) {
-          // await sendEmail({
-          //   to: budget.user.email,
-          //   subject: `Budget Alert for ${defaultAccount.name}`,
-          //   react: EmailTemplate({
-          //     userName: budget.user.name,
-          //     type: "budget-alert",
-          //     data: {
-          //       percentageUsed,
-          //       budgetAmount: parseInt(budgetAmount).toFixed(1),
-          //       totalExpenses: parseInt(totalExpenses).toFixed(1),
-          //       accountName: defaultAccount.name,
-          //     },
-          //   }),
-          // });
-          await sendTemplatedEmail({
+          await sendEmail({
             to: budget.user.email,
             subject: `Budget Alert for ${defaultAccount.name}`,
             react: EmailTemplate({
@@ -307,6 +293,20 @@ export const checkBudgetAlerts = inngest.createFunction(
               },
             }),
           });
+          // await sendTemplatedEmail({
+          //   to: budget.user.email,
+          //   subject: `Budget Alert for ${defaultAccount.name}`,
+          //   react: EmailTemplate({
+          //     userName: budget.user.name,
+          //     type: "budget-alert",
+          //     data: {
+          //       percentageUsed,
+          //       budgetAmount: parseInt(budgetAmount).toFixed(1),
+          //       totalExpenses: parseInt(totalExpenses).toFixed(1),
+          //       accountName: defaultAccount.name,
+          //     },
+          //   }),
+          // });
 
           // Update last alert sent
           await db.budget.update({
