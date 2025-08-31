@@ -3,6 +3,7 @@
 import { db } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
+import type { Prisma } from "@prisma/client";
 
 // Works for both Prisma.Decimal and number
 const serializeDecimal = (obj: any) => {
@@ -76,7 +77,7 @@ export async function bulkDeleteTransactions(transactionIds: string[]) {
         (accountBalanceChanges[t.accountId] ?? 0) + delta;
     }
 
-    await db.$transaction(async (tx) => {
+    await db.$transaction(async (tx: Prisma.TransactionClient) => {
       await tx.transaction.deleteMany({
         where: {
           id: { in: transactionIds },
