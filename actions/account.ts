@@ -4,7 +4,13 @@ import { db } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 
-const serializeDecimal = (obj: any) => {
+type DecimalLike = {
+  balance?: { toNumber: () => number };
+  amount?: { toNumber: () => number };
+  [key: string]: any;
+};
+
+const serializeDecimal = (obj: DecimalLike) => {
   const serialized = { ...obj };
   if (obj.balance) {
     serialized.balance = obj.balance.toNumber();
