@@ -4,7 +4,10 @@ import { db } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 
-export async function getCurrentBudget(accountId) {
+/**
+ * Get current budget for the user and current month's expenses for a specific account
+ */
+export async function getCurrentBudget(accountId: string) {
   try {
     const { userId } = await auth();
     if (!userId) throw new Error("Unauthorized");
@@ -51,19 +54,25 @@ export async function getCurrentBudget(accountId) {
       },
     });
 
+    // Use Number(...) so it works for both Prisma.Decimal and number
     return {
-      budget: budget ? { ...budget, amount: budget.amount.toNumber() } : null,
-      currentExpenses: expenses._sum.amount
-        ? expenses._sum.amount.toNumber()
-        : 0,
+      budget: budget
+        ? { ...budget, amount: Number(budget.amount) }
+        : null,
+      currentExpenses: Number(expenses._sum.amount ?? 0),
     };
-  } catch (error) {
+  } catch (err) {
+    const error =
+      err instanceof Error ? err : new Error("Unknown error fetching budget");
     console.error("Error fetching budget:", error);
     throw error;
   }
 }
 
-export async function updateBudget(amount) {
+/**
+ * Update or create user's budget (amount can be number or string)
+ */
+export async function updateBudget(amount: number | string) {
   try {
     const { userId } = await auth();
     if (!userId) throw new Error("Unauthorized");
@@ -74,26 +83,36 @@ export async function updateBudget(amount) {
 
     if (!user) throw new Error("User not found");
 
+    // Normalize amount to a number. If your schema uses Decimal, Prisma accepts number|string too.
+    const normalizedAmount =
+      typeof amount === "string" ? Number(amount) : Number(amount);
+
+    if (Number.isNaN(normalizedAmount)) {
+      throw new Error("Invalid amount");
+    }
+
     // Update or create budget
     const budget = await db.budget.upsert({
       where: {
         userId: user.id,
       },
       update: {
-        amount,
+        amount: normalizedAmount,
       },
       create: {
         userId: user.id,
-        amount,
+        amount: normalizedAmount,
       },
     });
 
     revalidatePath("/dashboard");
     return {
       success: true,
-      data: { ...budget, amount: budget.amount.toNumber() },
+      data: { ...budget, amount: Number(budget.amount) },
     };
-  } catch (error) {
+  } catch (err) {
+    const error =
+      err instanceof Error ? err : new Error("Unknown error updating budget");
     console.error("Error updating budget:", error);
     return { success: false, error: error.message };
   }
