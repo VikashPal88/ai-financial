@@ -16,7 +16,7 @@ export function ReceiptScanner({ onScanComplete }) {
     data: scannedData,
   } = useFetch(scanReceipt);
 
-  const handleReceiptScan = async (file: File) => {
+  const handleReceiptScan = async (file) => {
     if (file.size > 5 * 1024 * 1024) {
       toast.error("File size should be less than 5MB");
       return;
@@ -30,7 +30,7 @@ export function ReceiptScanner({ onScanComplete }) {
       onScanComplete(scannedData);
       toast.success("Receipt scanned successfully");
     }
-  }, [scanReceiptLoading, scannedData, onScanComplete]);
+  }, [scanReceiptLoading, scannedData]);
 
   return (
     <div className="flex items-center gap-4">
@@ -41,11 +41,10 @@ export function ReceiptScanner({ onScanComplete }) {
         accept="image/*"
         capture="environment"
         onChange={(e) => {
-          const file = e.target.files?.[0]; // ✅ fixed here
+          const file = e.target.files?.[0];
           if (file) handleReceiptScan(file);
         }}
       />
-
       <Button
         type="button"
         variant="outline"

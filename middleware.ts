@@ -2,6 +2,8 @@ import arcjet, { createMiddleware, detectBot, shield } from "@arcjet/next";
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
+const isProd = process.env.NODE_ENV === "production";
+
 const isProtectedRoute = createRouteMatcher([
   "/dashboard(.*)",
   "/account(.*)",
@@ -10,23 +12,23 @@ const isProtectedRoute = createRouteMatcher([
 
 // Create Arcjet middleware
 const aj = arcjet({
-  key: process.env.ARCJET_KEY,
-  // characteristics: ["userId"], // Track based on Clerk userId
+  key: isProd ? process.env.ARCJET_KEY : "dev-no-key-needed",
+  // characteristics: ["userId"],
   rules: [
-    // Shield protection for content and security
     shield({
-      mode: "LIVE",
+      mode: isProd ? "LIVE" : "DRY_RUN", // ← never block in dev
     }),
     detectBot({
-      mode: "LIVE", // will block requests. Use "DRY_RUN" to log only
+      mode: isProd ? "LIVE" : "DRY_RUN", // ← never block in dev
       allow: [
         "CATEGORY:SEARCH_ENGINE", // Google, Bing, etc
-        "GO_HTTP", // For Inngest
-        // See the full list at https://arcjet.com/bot-list
+        "GO_HTTP",
+        // NOTE: do NOT put URLs like "http://localhost:3000" here
       ],
     }),
   ],
 });
+
 
 // Create base Clerk middleware
 const clerk = clerkMiddleware(async (auth, req) => {
