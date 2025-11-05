@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { CalendarIcon, Loader2 } from "lucide-react";
+import { CalendarIcon, Loader2, Mic } from "lucide-react";
 import { format } from "date-fns";
 import { useRouter, useSearchParams } from "next/navigation";
 import useFetch from "@/hooks/use-fetch";
@@ -30,6 +30,10 @@ import { cn } from "@/lib/utils";
 import { createTransaction, updateTransaction } from "@/actions/transaction";
 import { transactionSchema } from "@/app/lib/schema";
 import { ReceiptScanner } from "./recipt-scanner";
+import { parseVoiceText } from "@/lib/parse-vocie";
+import { VoiceInput } from "@/components/voice-input";
+import { mapParsedCategoryToId } from "@/lib/utils";
+import VoiceModal2 from "@/components/voice-modal2";
 
 export function AddTransactionForm({
   accounts,
@@ -40,6 +44,7 @@ export function AddTransactionForm({
   const router = useRouter();
   const searchParams = useSearchParams();
   const editId = searchParams.get("edit");
+  const [voiceOpen, setVoiceOpen] = useState(false);
 
   const {
     register,
@@ -132,6 +137,48 @@ export function AddTransactionForm({
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       {/* Receipt Scanner - Only show in create mode */}
       {!editMode && <ReceiptScanner onScanComplete={handleScanComplete} />}
+      {/* Voice Input - create mode */}
+      {/* Voice Input - create mode (styled like ReceiptScanner) */}
+      <div className="flex items-center gap-4">
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full h-10 bg-gradient-to-br from-orange-500 via-pink-500 to-purple-500 animate-gradient hover:opacity-90 transition-opacity text-white hover:text-white"
+          onClick={() => setVoiceOpen(true)}
+          disabled={transactionLoading || voiceOpen}
+        >
+          {transactionLoading ? (
+            <>
+              <Loader2 className="mr-2 animate-spin" />
+              <span>Processing...</span>
+            </>
+          ) : (
+            <>
+              <Mic className="mr-2" />
+              <span>Add by Voice</span>
+            </>
+          )}
+        </Button>
+      </div>
+
+      <VoiceModal2
+        isOpen={voiceOpen}
+        onClose={() => setVoiceOpen(false)}
+        onSave={(payload) => {
+          // payload = { amount, category, note, rawTranscript, englishTranscript }
+          if (payload.amount) setValue("amount", payload.amount.toString());
+          if (payload.note) setValue("description", payload.note);
+          if (payload.category) {
+            // map category name -> category id in your categories prop
+            const matched = categories.find((c) =>
+              c.name.toLowerCase().includes(payload.category)
+            );
+            if (matched) setValue("category", matched.id);
+          }
+          toast.success("Voice transaction ready — review and submit.");
+          setVoiceOpen(false);
+        }}
+      />
 
       {/* Type */}
       <div className="space-y-2">

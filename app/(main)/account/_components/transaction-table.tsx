@@ -80,6 +80,8 @@ export function TransactionTable({ transactions }) {
   const filteredAndSortedTransactions = useMemo(() => {
     let result = [...transactions];
 
+    console.log("Transactions:", transactions);
+
     // Apply search filter
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();

@@ -2,7 +2,11 @@
 
 import { db } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
+// ✅ change this import
+import { unstable_noStore as noStore } from "next/cache";
+
+
 import type { Prisma } from "@prisma/client";
 
 // Works for both Prisma.Decimal and number
@@ -18,6 +22,7 @@ const serializeDecimal = (obj: any) => {
 };
 
 export async function getAccountWithTransactions(accountId: string) {
+  noStore(); // ⛔️ disable caching for this call
   const { userId } = await auth();
   if (!userId) throw new Error("Unauthorized");
 
@@ -27,20 +32,14 @@ export async function getAccountWithTransactions(accountId: string) {
 
   if (!user) throw new Error("User not found");
 
-  const account = await db.account.findUnique({
-    where: {
-      id: accountId,
-      userId: user.id,
-    },
+  const account = await db.account.findFirst({
+    where: { id: accountId, userId: user.id },
     include: {
-      transactions: {
-        orderBy: { date: "desc" },
-      },
-      _count: {
-        select: { transactions: true },
-      },
+      transactions: { orderBy: { date: "desc" } },
+      _count: { select: { transactions: true } },
     },
   });
+
 
   if (!account) return null;
 
@@ -55,52 +54,47 @@ export async function bulkDeleteTransactions(transactionIds: string[]) {
     const { userId } = await auth();
     if (!userId) throw new Error("Unauthorized");
 
-    const user = await db.user.findUnique({
-      where: { clerkUserId: userId },
-    });
-
+    const user = await db.user.findUnique({ where: { clerkUserId: userId } });
     if (!user) throw new Error("User not found");
 
     const transactions = await db.transaction.findMany({
-      where: {
-        id: { in: transactionIds },
-        userId: user.id,
-      },
+      where: { id: { in: transactionIds }, userId: user.id },
+      select: { id: true, amount: true, type: true, accountId: true },
     });
 
-    // Compute per-account balance deltas in JS numbers (simple + pragmatic)
+    if (transactions.length === 0) {
+      return { success: true }; // nothing to delete
+    }
+
+    // Track affected account IDs and balance deltas
     const accountBalanceChanges: Record<string, number> = {};
     for (const t of transactions) {
-      const raw = Number(t.amount); // works for Decimal or number
-      const delta = t.type === "EXPENSE" ? raw : -raw;
+      const raw = Number(t.amount);
+      // 👇 Fix sign: EXPENSE should DECREASE balance, INCOME should INCREASE
+      const delta = t.type === "EXPENSE" ? -raw : raw;
       accountBalanceChanges[t.accountId] =
         (accountBalanceChanges[t.accountId] ?? 0) + delta;
     }
 
     await db.$transaction(async (tx: Prisma.TransactionClient) => {
       await tx.transaction.deleteMany({
-        where: {
-          id: { in: transactionIds },
-          userId: user.id,
-        },
+        where: { id: { in: transactionIds }, userId: user.id },
       });
 
       for (const [accId, change] of Object.entries(accountBalanceChanges)) {
         await tx.account.update({
           where: { id: accId },
-          data: {
-            balance: { increment: change },
-          },
+          data: { balance: { increment: change } },
         });
       }
     });
+    revalidateTag("transactions");
+    for (const accId of Object.keys(accountBalanceChanges)) {
+      revalidateTag(`account:${accId}`);
+    }
 
-    // If you want to revalidate a specific account page, consider:
-    // revalidatePath(`/account/${someId}`);
-    revalidatePath("/dashboard");
-    revalidatePath("/account/[id]");
 
-    return { success: true };
+    return { success: true, affectedAccounts: Object.keys(accountBalanceChanges) };
   } catch (err) {
     const error =
       err instanceof Error ? err : new Error("Unknown error in bulkDeleteTransactions");
@@ -137,7 +131,8 @@ export async function updateDefaultAccount(accountId: string) {
       data: { isDefault: true },
     });
 
-    revalidatePath("/dashboard");
+    revalidatePath("/dashboard", "page"); // ✅ add "page"
+
     return { success: true, data: serializeDecimal(account) };
   } catch (err) {
     const error =
